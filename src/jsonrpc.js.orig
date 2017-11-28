@@ -3,8 +3,13 @@ import bluebird from 'bluebird';
 import { defaultBlockNumber, defaultFromBlockNumber, waitingTimeInMilliseconds } from './config';
 import { getWeb3 } from './web3/web3Provider';
 import logger, { logError } from './logger';
-import { isInArray, isQueriedTransaction, isContractCreationQueriedTransaction, isRegularQueriedTransaction, validateBlockByNumber } from './utils';
+<<<<<<< HEAD
+import { isInArray, isQueriedTransaction, isContractCreationQueriedTransaction, isRegularQueriedTransaction } from './utils';
+import { isAddress, validateBlockNumber } from './web3/utils';
+=======
+import { isInArray, isQueriedTransaction, validateBlockByNumber } from './utils';
 import { isAddress, getLastBlock } from './web3/utils';
+>>>>>>> 699026a... ]Removes logger dependancy
 import initCustomRPCs from './web3/customRpc';
 
 export const rpcErrorCatch = (e) => {
@@ -69,7 +74,6 @@ export default class JsonRpc {
       transactionLogs[log.transactionHash].push(log);
     });
     const result = [];
-
     block.transactions.filter(transaction =>
       isContractCreationQueriedTransaction({ txn: transaction, addresses: this.addresses }) ||
       isRegularQueriedTransaction({ addresses: this.addresses, QueriedAddress: transaction.to })
@@ -78,7 +82,6 @@ export default class JsonRpc {
       if (typeof transactionLogs[transactionObject.hash] !== 'undefined') {
         transactionObject.logs = transactionLogs[transactionObject.hash];
       } else { transactionObject.logs = []; }
-
       result.push(transactionObject);
     });
 

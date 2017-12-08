@@ -65,7 +65,7 @@ export default class JsonRpc {
    * @param Array logs
    * @return object
    */
-  getBlockAndTransactionLogsFormat(block, logs) {
+  static getBlockAndTransactionLogsFormat(transactions, logs) {
     const transactionLogs = {};
     logs.forEach((log) => {
       if (!Array.isArray(transactionLogs[log.transactionHash])) {
@@ -75,10 +75,7 @@ export default class JsonRpc {
     });
     const result = [];
 
-    block.transactions.filter(transaction =>
-      isContractCreationQueriedTransaction({ txn: transaction, addresses: this.addresses }) ||
-      isRegularQueriedTransaction({ addresses: this.addresses, QueriedAddress: transaction.to })
-    ).forEach((transaction) => {
+    transactions.forEach((transaction) => {
       const transactionObject = transaction;
       if (typeof transactionLogs[transactionObject.hash] !== 'undefined') {
         transactionObject.logs = transactionLogs[transactionObject.hash];
@@ -140,15 +137,14 @@ export default class JsonRpc {
       if (this.callback) {
         transactionsResult.forEach(async (txn) => {
           if (txn) {
-            try {
-              await this.callback(txn);
-            } catch (e) {
-              rpcErrorCatch(e);
-            }
+            // Todo: catch errors from callback and pass to error module 
+            await this.callback(txn);
           }
         });
       }
+      return transactionsResult;
     }
+    return null;
   }
 
 
@@ -172,12 +168,23 @@ export default class JsonRpc {
    * @param {*} block
    */
   async scanFastMode(block) {
+    // Todo: Simplify the expressions and seperate into functions
+    const filteredTransactions = await Promise.all(block.transactions.filter(transaction =>
+      isContractCreationQueriedTransaction({ txn: transaction, addresses: this.addresses }) ||
+      isRegularQueriedTransaction({ addresses: this.addresses, QueriedAddress: transaction.to })
+    ).map(async (transaction) => {
+      const transactionWithReceipt = transaction;
+      transactionWithReceipt.receipt = await this.getTransactionReceiptAsync(transaction.hash);
+      return transactionWithReceipt;
+    }));
+
     const logsAsArray = await this.getLogsFromOneBlock();
     const logs = logsAsArray.reduce((a, b) => [...a, ...b], []);
     const blockTransactionsWithLogsList =
-    this.getBlockAndTransactionLogsFormat(block, logs);
+    JsonRpc.getBlockAndTransactionLogsFormat(filteredTransactions, logs);
 
     if (this.callback) {
+      // Todo: catch errors from callback and pass to error module 
       blockTransactionsWithLogsList.forEach((transaction) => {
         this.callback(transaction);
       });
